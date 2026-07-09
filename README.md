@@ -9,7 +9,6 @@
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-ML-F7931E?style=flat-square&logo=scikit-learn&logoColor=white)](https://scikit-learn.org/)
 [![XGBoost](https://img.shields.io/badge/XGBoost-Model-006400?style=flat-square)](https://xgboost.readthedocs.io/)
 [![CatBoost](https://img.shields.io/badge/CatBoost-Model-FFCC00?style=flat-square)](https://catboost.ai/)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](#-license)
 
 [Overview](#-overview) •
 [Workflow](#-end-to-end-workflow) •
