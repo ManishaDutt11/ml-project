@@ -1,126 +1,165 @@
-# Student Exam Performance Predictor
+<div align="center">
 
-A beginner-friendly, end-to-end machine learning project that predicts a student's **math score** from their gender, ethnicity, parental education level, lunch type, test-prep status, reading score, and writing score — served through a small Flask web app.
+# 🎓 Student Exam Performance Predictor
 
-This README explains what every file does and how to run the project, written for someone new to ML projects.
+**An end-to-end Machine Learning project** that predicts a student's **Math score** from demographic and academic inputs — trained with 8 regression models and served live through a Flask web app.
+
+[![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-Web%20App-000000?style=flat-square&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-ML-F7931E?style=flat-square&logo=scikit-learn&logoColor=white)](https://scikit-learn.org/)
+[![XGBoost](https://img.shields.io/badge/XGBoost-Model-006400?style=flat-square)](https://xgboost.readthedocs.io/)
+[![CatBoost](https://img.shields.io/badge/CatBoost-Model-FFCC00?style=flat-square)](https://catboost.ai/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](#-license)
+
+[Overview](#-overview) •
+[Workflow](#-end-to-end-workflow) •
+[Project Structure](#-project-structure) •
+[Setup](#-setup--installation) •
+[How It Works](#-how-it-works) •
+[Results](#-model-results) •
+[Roadmap](#-roadmap--known-issues)
+
+</div>
 
 ---
 
-## 1. What this project actually does
+## 📌 Overview
 
-There are two separate "halves" to this project:
+This project answers a simple question: **can a student's math score be predicted from their background and their other two exam scores?**
 
-1. **Training half (offline, run once)** — reads a CSV of past student exam data, cleans it, trains several machine learning models, picks the best one, and saves it to disk as a `.pkl` file.
-2. **Serving half (runs every time someone visits the website)** — loads that saved model, takes new input from a web form, and returns a predicted math score.
+It's built as a complete, production-style ML pipeline rather than a single notebook — covering data ingestion, cleaning, transformation, model training/selection, and deployment behind a web interface. It's intentionally structured the way real ML systems are organized, making it a solid reference for anyone learning how a raw CSV turns into a usable, deployed model.
 
-```
-Raw data  --->  Clean & train  --->  Save best model  --->  Web app loads model  --->  Predicts for new students
-```
+**Input features:**
+- Gender
+- Ethnicity / race-group
+- Parental level of education
+- Lunch type (standard / free-reduced)
+- Test preparation course status
+- Reading score
+- Writing score
+
+**Predicted output:** Math score (0–100)
 
 ---
 
-## 2. Project structure
+## 🔁 End-to-End Workflow
+
+```mermaid
+flowchart LR
+    A[📄 Raw Dataset<br/>stud.csv] --> B[🔍 EDA<br/>notebook/1 EDA.ipynb]
+    B --> C[⚙️ Data Ingestion<br/>data_ingestion.py]
+    C --> D[🧪 Train / Test Split<br/>80% / 20%]
+    D --> E[🛠️ Data Transformation<br/>Impute → Encode → Scale]
+    E --> F[🤖 Model Training<br/>8 regressors + GridSearchCV]
+    F --> G[🏆 Best Model Selected<br/>by R² score]
+    G --> H[💾 Artifacts Saved<br/>model.pkl + preprocessor.pkl]
+    H --> I[🌐 Flask Web App<br/>app.py]
+    I --> J[👤 User fills form<br/>home.html]
+    J --> K[📈 Live Prediction<br/>predict_pipeline.py]
+```
+
+At a glance, the project has two independent halves:
+
+| Phase | When it runs | What it does |
+|---|---|---|
+| **Training pipeline** | Once, offline | Reads raw data → cleans/encodes it → trains & compares 8 models → saves the best one to disk |
+| **Serving pipeline** | Every time a user visits the site | Loads the saved model → takes new form input → returns a live prediction |
+
+---
+
+## 🗂 Project Structure
 
 ```
 ml-project/
 ├── app.py                          # Flask web app (local dev entry point)
-├── application.py                  # Same app, entry point used for deployment (e.g. AWS)
-├── requirements.txt                # Python packages needed
+├── application.py                  # Same app, entry point used for deployment (e.g. AWS Elastic Beanstalk)
+├── requirements.txt                # Python dependencies
 ├── setup.py                        # Makes src/ pip-installable
-├── artifact/                       # Generated files land here (created automatically)
+├── .ebextensions/                  # AWS Elastic Beanstalk deployment config
+│
+├── artifact/                       # Auto-generated at training time
 │   ├── raw.csv                     # Unmodified copy of the source data
 │   ├── train.csv / test.csv        # 80/20 train-test split
 │   ├── preprocessor.pkl            # Saved data-cleaning/encoding pipeline
 │   └── model.pkl                   # Saved best-performing trained model
+│
 ├── notebook/
-│   ├── data/stud.csv                # Original raw dataset
-│   ├── 1 EDA.ipynb                 # Exploratory data analysis notebook
-│   └── 2 MODEL.ipynb               # Model prototyping notebook
+│   ├── data/stud.csv               # Original raw dataset
+│   ├── 1 EDA.ipynb                 # Exploratory data analysis
+│   └── 2 MODEL.ipynb               # Model prototyping / experimentation
+│
 ├── templates/
-│   ├── index.html                  # Simple landing page
-│   └── home.html                   # The prediction form + result display
+│   ├── index.html                  # Landing page
+│   └── home.html                   # Prediction form + result display
+│
 └── src/
-    ├── logger.py                   # Logging setup
-    ├── exception.py                # Custom error handling
-    ├── util.py                     # Shared helper functions (save/load/evaluate)
+    ├── logger.py                   # Central logging configuration
+    ├── exception.py                # Custom exception handling (file + line number)
+    ├── util.py                     # save_object / load_object / evaluate_models helpers
     ├── components/
-    │   ├── data_ingestion.py       # Step 1: load + split data
-    │   ├── data_transformation.py  # Step 2: clean + encode data
-    │   └── model_trainer.py        # Step 3: train + select best model
+    │   ├── data_ingestion.py       # Step 1 — load + split raw data
+    │   ├── data_transformation.py  # Step 2 — clean, encode, scale data
+    │   └── model_trainer.py        # Step 3 — train, tune, and select the best model
     └── pipeline/
-        └── predict_pipeline.py     # Used by app.py to make a live prediction
+        └── predict_pipeline.py     # Turns live form input into a prediction
 ```
 
 ---
 
-## 3. How training works (step by step)
+## ⚙️ How It Works
 
-Run with:
-```bash
-python src/components/data_ingestion.py
-```
-
-This single command chains three stages together:
-
-**Step 1 — `data_ingestion.py`**
+### 1. Data Ingestion — `src/components/data_ingestion.py`
 - Reads `notebook/data/stud.csv` into a pandas DataFrame.
 - Saves an unmodified copy as `artifact/raw.csv`.
-- Splits the data 80% train / 20% test using `train_test_split`.
-- Saves those as `artifact/train.csv` and `artifact/test.csv`.
+- Splits the data **80% train / 20% test** with `train_test_split`.
+- Writes `artifact/train.csv` and `artifact/test.csv`.
 
-**Step 2 — `data_transformation.py`**
-- Numeric columns (`reading_score`, `writing_score`): missing values filled with the median, then scaled with `StandardScaler`.
-- Categorical columns (gender, ethnicity, parental education, lunch, test prep): missing values filled with the most frequent value, one-hot encoded, then scaled.
-- These are combined into a single `ColumnTransformer` called the **preprocessor**.
-- The preprocessor is *fit* on the training data and *applied* to both train and test data, then saved to `artifact/preprocessor.pkl` so the exact same transformation can be reused later on new data.
+### 2. Data Transformation — `src/components/data_transformation.py`
+- **Numeric columns** (`reading_score`, `writing_score`): missing values filled with the median, then scaled with `StandardScaler`.
+- **Categorical columns** (gender, ethnicity, parental education, lunch, test prep): missing values filled with the most frequent value, one-hot encoded, then scaled.
+- Both pipelines are combined into a single `ColumnTransformer` — the **preprocessor**.
+- The preprocessor is *fit* on training data and *applied* to both train/test sets, then saved to `artifact/preprocessor.pkl` so new incoming data is transformed identically at inference time.
 
-**Step 3 — `model_trainer.py`**
-- Trains and hyperparameter-tunes 8 different regression models: Random Forest, Decision Tree, Gradient Boosting, Linear Regression, KNN, XGBoost, CatBoost, and AdaBoost.
-- Scores each with R² on the test set (via `GridSearchCV` in `src/util.py`'s `evaluate_models()`).
-- Keeps whichever model scored highest, and refuses to save anything scoring below 0.6 R².
-- Saves the winning model to `artifact/model.pkl`.
+### 3. Model Training — `src/components/model_trainer.py`
+Trains and hyperparameter-tunes **8 regression algorithms**:
 
----
-
-## 4. How the web app works (step by step)
-
-Run with:
-```bash
-python app.py
-```
-Then open `http://localhost:5000` in your browser.
-
-1. Visiting `/predictdata` (GET) shows the input form defined in `templates/home.html`.
-2. Submitting the form (POST) hits `predict_datapoint()` in `app.py`, which reads all 7 form fields.
-3. Those fields are wrapped into a `CustomData` object (`src/pipeline/predict_pipeline.py`), which converts them into a single-row pandas DataFrame with the same column names used during training.
-4. `PredictPipeline.predict()` loads `model.pkl` and `preprocessor.pkl` from `artifact/`, transforms the new row through the *same* preprocessor used in training, then feeds it to the model.
-5. The predicted math score is passed back into `home.html` and displayed to the user.
-
----
-
-## 5. File-by-file explanation (for beginners)
-
-| File | What it does |
+| Model | Type |
 |---|---|
-| `src/logger.py` | Creates a timestamped log file under `logs/` and writes progress messages to it. Doesn't affect predictions — just useful for debugging. |
-| `src/exception.py` | Defines `CustomException`, which wraps Python errors with the exact file name and line number where they happened. Used everywhere with `try/except`. |
-| `src/util.py` | Three helpers: `save_object()` (pickle/save an object), `load_object()` (unpickle/load it back), `evaluate_models()` (grid-search, fit, and score a dict of models). |
-| `src/components/data_ingestion.py` | Loads the raw CSV, splits it into train/test sets, saves all three to `artifact/`. |
-| `src/components/data_transformation.py` | Builds and applies the cleaning/encoding pipeline (imputation, scaling, one-hot encoding); saves it as `preprocessor.pkl`. |
-| `src/components/model_trainer.py` | Trains 8 candidate models, tunes their hyperparameters, picks the best by R² score, saves it as `model.pkl`. |
-| `src/pipeline/predict_pipeline.py` | `CustomData` turns form inputs into a DataFrame; `PredictPipeline` loads the saved model + preprocessor and returns a prediction. |
-| `app.py` | Flask app used for local development. Defines the `/` and `/predictdata` routes. |
-| `application.py` | Identical to `app.py`, but this is the entry point some cloud platforms (like AWS Elastic Beanstalk) expect to find. |
-| `templates/index.html` | A minimal landing page. |
-| `templates/home.html` | The HTML form for entering a student's details, and where the predicted score is shown. |
-| `setup.py` | Lets you `pip install -e .` so `src` can be imported as a package. |
-| `requirements.txt` | List of Python packages the project depends on. |
-| `notebook/1 EDA.ipynb` | Exploratory analysis of the raw dataset (not needed to run the app). |
-| `notebook/2 MODEL.ipynb` | Early prototyping of the modeling approach (not needed to run the app). |
+| Linear Regression | Linear |
+| K-Neighbors Regressor | Instance-based |
+| Decision Tree | Tree-based |
+| Random Forest Regressor | Ensemble (bagging) |
+| Gradient Boosting Regressor | Ensemble (boosting) |
+| XGBoost Regressor | Ensemble (boosting) |
+| CatBoost Regressor | Ensemble (boosting) |
+| AdaBoost Regressor | Ensemble (boosting) |
+
+- Each model is scored with **R²** on the held-out test set via `GridSearchCV` (see `evaluate_models()` in `src/util.py`).
+- The best-scoring model is kept; training deliberately fails if the top score is below **0.6 R²**, as a sanity check against shipping a bad model.
+- The winning model is serialized to `artifact/model.pkl`.
+
+### 4. Serving — `app.py` + `src/pipeline/predict_pipeline.py`
+1. `GET /predictdata` renders the input form (`templates/home.html`).
+2. `POST /predictdata` reads all 7 form fields into a `CustomData` object.
+3. `CustomData` converts the input into a single-row DataFrame using the **same column names** used during training.
+4. `PredictPipeline.predict()` loads `model.pkl` + `preprocessor.pkl`, transforms the row through the identical preprocessing pipeline, and generates a prediction.
+5. The predicted math score is rendered back on `home.html`.
 
 ---
 
-## 6. Setup & installation
+## 🧰 Tech Stack
+
+| Layer | Tools |
+|---|---|
+| **Language** | Python |
+| **Data handling** | pandas, numpy |
+| **Modeling** | scikit-learn, XGBoost, CatBoost |
+| **Web framework** | Flask |
+| **Serialization** | dill |
+
+---
+
+## 🚀 Setup & Installation
 
 ```bash
 # 1. Clone the repository
@@ -129,34 +168,50 @@ cd ml-project
 
 # 2. Create and activate a virtual environment (recommended)
 python -m venv venv
-source venv/bin/activate      # on Windows: venv\Scripts\activate
+source venv/bin/activate        # Windows: venv\Scripts\activate
 
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Train the model (creates artifact/*.pkl and artifact/*.csv)
+# 4. Train the model — generates artifact/*.pkl and artifact/*.csv
 python src/components/data_ingestion.py
 
-# 5. Run the web app
+# 5. Launch the web app
 python app.py
 ```
 
-Then visit `http://localhost:5000/predictdata` in your browser, fill in the form, and submit to see a predicted math score.
+Then open **`http://localhost:5000/predictdata`**, fill in the form, and submit to see a predicted math score.
 
 ---
 
-## 7. Known issues (worth knowing as a beginner)
+## 📊 Model Results
 
-- **Hardcoded Windows-style file paths.** `data_ingestion.py` uses `'notebook\data\stud.csv'` and `predict_pipeline.py` uses `'artifact\model.pkl'` / `'artifact\preprocessor.pkl'`. Backslashes are Windows path separators — this will likely fail on macOS/Linux. Fix by using forward slashes or `os.path.join(...)` instead, e.g. `os.path.join('notebook', 'data', 'stud.csv')`.
-- **`app.py` runs with `debug=True`.** Fine for local development, but should be turned off before deploying anywhere public.
-- **No input validation beyond the HTML form.** The Flask route trusts that `reading_score`/`writing_score` are valid numbers; malformed input will raise an unhandled error.
+The training pipeline benchmarks all 8 models on the same train/test split and reports R² on the held-out test set, keeping only the top performer. To see the exact numbers for a given run, check the console output of `data_ingestion.py`, or explore the comparison interactively in `notebook/2 MODEL.ipynb`.
+
+> 💡 Want this table filled in with your live numbers? Run the training pipeline once and paste the printed R² scores here — it's a nice touch for a pinned repo.
 
 ---
 
-## 8. Tech stack
+## 🗺 Roadmap & Known Issues
 
-- **Language:** Python
-- **Data handling:** pandas, numpy
-- **ML models:** scikit-learn, XGBoost, CatBoost
-- **Web framework:** Flask
-- **Serialization:** dill (pickle-like)
+Transparency matters — here's what's on the radar:
+
+- [ ] **Cross-platform file paths** — some paths use Windows-style backslashes; replacing with `os.path.join(...)` will make the project portable to macOS/Linux.
+- [ ] **Disable debug mode** — `app.py` currently runs with `debug=True`, fine for local dev but should be off for any public deployment.
+- [ ] **Input validation** — add server-side validation for numeric fields beyond what the HTML form provides.
+- [ ] **Add automated tests** — unit tests for the transformation and prediction pipelines.
+
+Contributions and suggestions on any of the above are very welcome.
+
+---
+
+## 👩‍💻 Author
+
+**Manisha Dutt**
+[GitHub](https://github.com/ManishaDutt11)
+
+<div align="center">
+
+If this project helped you understand end-to-end ML pipelines, consider giving it a ⭐!
+
+</div>
