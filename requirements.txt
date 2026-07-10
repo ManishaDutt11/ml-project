@@ -7,4 +7,5 @@ matplotlib
 catboost
 dill
 flask
+gunicorn
 #-e .
